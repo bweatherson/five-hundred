@@ -172,6 +172,14 @@ export interface HeuristicParams {
   avoidBidderVoid: number;
   /** Defenders: lead-choice penalty for a suit the bidder's partner has shown out of. */
   avoidPartnerVoid: number;
+  /** Bidding side: stop leading trumps once both opponents are known (or inferred) to be out of them. */
+  drawStopVoid: boolean;
+  /**
+   * Infer an opponent is out of trumps when they followed a trump lead with a trump that didn't
+   * win the trick and at most `drawInferOut - 1` unseen trumps outrank it (0 = off). Defenders
+   * play their lowest card when they can't win, so their remaining trumps must outrank it.
+   */
+  drawInferOut: number;
 }
 
 export const DEFAULT_HEURISTIC: HeuristicParams = {
@@ -242,6 +250,8 @@ export const DEFAULT_HEURISTIC: HeuristicParams = {
   ruffAwareBoss: 0,
   avoidBidderVoid: 0,
   avoidPartnerVoid: 0,
+  drawStopVoid: false,
+  drawInferOut: 0,
 };
 
 /** Settings for the gap-based misère model and fuller auction signals. */
@@ -538,6 +548,29 @@ export function evalDiscard(thirteen: Card[], trump: Suit | null, keepAces: bool
   return best;
 }
 
+/**
+ * True if `seat` followed a trump lead with a losing trump (they couldn't or didn't try to win)
+ * while fewer than `tol` unseen trumps outrank it. A player who can't win plays their lowest
+ * card, so whatever trumps they have left must be above it.
+ */
+export function inferredOutOfTrumps(v: PlayView, seat: number, unseen: Card[], tol: number): boolean {
+  const trump = v.contract.trump;
+  if (tol <= 0 || trump === null) return false;
+  for (const t of v.tricks) {
+    if (t.ledSuit !== trump) continue;
+    let best = -1;
+    for (const pl of t.plays) {
+      const pw = cardPower(pl.card, trump, trump);
+      if (pl.seat === seat && best >= 0 && pw < best && isTrump(pl.card, trump)) {
+        const above = unseen.filter((c) => isTrump(c, trump) && cardPower(c, trump, trump) > pw).length;
+        if (above < tol) return true;
+      }
+      if (pw > best) best = pw;
+    }
+  }
+  return false;
+}
+
 function playNormal(v: PlayView, p: HeuristicParams): Card {
   const trump = v.contract.trump;
   const unseen = unseenCards(v);
@@ -567,7 +600,8 @@ function playNormal(v: PlayView, p: HeuristicParams): Card {
     if (nonJoker.length === 0) return legal[0];
     if (trump !== null && weAreBidders && p.drawTrumps !== "never") {
       const myTrumps = nonJoker.filter((c) => isTrump(c, trump));
-      const enemyTrumpsOut = unseen.some((c) => isTrump(c, trump));
+      const enemyTrumpsOut = unseen.some((c) => isTrump(c, trump))
+        && (!p.drawStopVoid || opps.some((o) => !voids[o].has(trump) && !inferredOutOfTrumps(v, o, unseen, p.drawInferOut)));
       // Hold back the last `bidderKeepTrumps` trumps (all leads, or only non-boss ones).
       const total = myTrumps.length + (legal.includes("JK") ? 1 : 0);
       const outCount = unseen.filter((c) => isTrump(c, trump)).length;

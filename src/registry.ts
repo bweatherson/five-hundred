@@ -137,6 +137,19 @@ export const STRATEGIES: Record<string, { describe: string; make: Factory }> = {
       fewTrumpsLead: 3,
     }),
   },
+  tuned13: {
+    describe: "tuned12 + the bidding side stops leading trumps once both opponents are out (shown out, or dropped a trump that only a void hand would play)",
+    make: heur({
+      aggression: -0.5, misereModel: "gap", misereDanger: 1, misereSlack: 1, opponentStrainPenalty: 1.5,
+      secondHandRuff: true, discardMode: "eval", signalBid: 4, signalStrains: "all", partnerSupport: 1.5,
+      stopAtWin: true, desperation: 1, behindScore: 300, behindAdjust: 1,
+      estimateModel: "fit", discardModel: "classic", bidderKeepTrumps: 1,
+      guardDiscards: 2, leadPartnerSuit: 1, aggression7: 0.25, aggression8: -0.25,
+      ruffLow: 2, overtakePartner: 2, secondHandDuck: 1, noBossTrumpLead: 1,
+      jokerDuck: 2, lateTrumpLead: 7, misereDef: 7, misereBid: 5, drawHigh: true,
+      fewTrumpsLead: 3, drawStopVoid: true, drawInferOut: 1,
+    }),
+  },
   sim: {
     describe: "simulation card play (worlds=N, voids=bool, infer=bool, tries=N, tol=N, endgame=N, policy=name); bids, discards and rollouts use `policy` (default tuned)",
     make: (o) => {

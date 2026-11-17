@@ -35,9 +35,10 @@ in [README.md](README.md).
 | `tuned10` | misère bidder: lead low from the shortest suit early, discard from the shortest suit | +1.0 pts/deal (two seeds), +0.1 win-prob pts/deal vs `tuned9` |
 | `tuned11` | the bidder draws trumps with its highest trump when it lacks the top one | +9.3 to +9.8 pts/deal (two seeds), +0.9 win-prob pts/deal vs `tuned10` |
 | `tuned12` | defenders on lead from trick 3 with only 1–2 trumps out lead a low trump | +0.5 to +0.6 pts/deal (two seeds), +0.0 win-prob pts/deal vs `tuned11` |
+| `tuned13` | the bidding side stops leading trumps once both opponents are out of them (shown out, or inferred from a high trump dropped under a winner) | +1.0 ± 0.2 pts/deal (also against the weaker field), +0.1 win-prob pts/deal vs `tuned12` |
 | `sim:policy=tuned2` | simulation card play on top of `tuned2` | +29.6 pts/deal vs `tuned2` |
 
-## What goes into each decision (current best: `tuned12`, and `sim` for card play)
+## What goes into each decision (current best: `tuned13`, and `sim` for card play)
 
 ### Bidding (`tuned4`–`tuned6`)
 
@@ -646,6 +647,26 @@ partner's discarded suits) are too small to separate from zero. `misereBid=7` an
 `secondHandDuck=2` never change a card on top of `tuned12`'s other rules. Some former neutrals
 (`noBossTrumpLead=2`, `partnerSupport=1.25`, `partnerJoker`) are now mildly negative, since
 `tuned12` already covers those spots differently.
+
+### Stopping the trump draw (`tuned13`)
+
+Spotted in play: the bidding side kept leading trumps after both opponents had shown out. The
+check for "trumps still out" counted every unseen trump, including partner's. Over 20,000 deals
+of `tuned12` self-play (`src/probe-draw.ts`), at bidding-side leads holding a trump:
+
+| situation | leads | led a trump | opponents really had a trump |
+|---|---|---|---|
+| both opponents shown out of trumps | 7,251 | 21% | 0% |
+| ...or one dropped a losing trump with no unseen trump above it | 2,698 | 35% | 0% |
+| ...the same with one unseen trump above it | 13,259 | 32% | 59% |
+| everything else | 46,336 | 72% | 94% |
+
+The inference works because a defender who can't win the trick plays its lowest card, so any trumps
+it has left must outrank the one it dropped. Allowing one higher unseen trump is too loose.
+`drawStopVoid` (stop once both opponents are out) gains +0.6 ± 0.2 pts/deal; adding the inference
+(`drawInferOut=1`) makes it +1.0 ± 0.2 against `tuned12`, +1.0 against `heuristic`–`tuned5` and +0.9
+against `tuned6`–`tuned10` (60k deals each), and +0.1 win-prob pts/deal in win mode. Against people,
+who sometimes drop a high trump to mislead, the inference can be wrong; a low trump never triggers it.
 
 ### Near 500
 

@@ -22,6 +22,7 @@ npx tsx src/calibrate-auction.ts tuned5 40000 11        # what partner's/opponen
 npm run sweep -- --base tuned5 --deals 60000 --jobs 8 --mode near tuned6   # only positions with a side on 400+
 npx tsx src/probe.ts run 50000 1 0 tuned7 > p0.jsonl   # single-decision probe (situations in src/probe-situations.ts)
 npx tsx src/probe.ts run 500000 1 0 tuned10 tuned10 misere > m0.jsonl   # the same, misère hands only
+npx tsx src/probe-draw.ts tuned13 20000              # trump leads after the opponents are out
 npx tsx src/probe-discard.ts run 500000 1 0 tuned10 > k0.jsonl   # misère kitty-discard probe; report with: npx tsx src/probe-discard.ts report k*.jsonl
 npx tsx src/probe.ts report p*.jsonl --min 300          # paired results by situation and sub-case
 ```
@@ -178,7 +179,7 @@ Implement `Strategy` (`bid`, `discard`, `play`, and optionally `jokerSuit`), the
 
 ## Playing in the browser
 
-`web/` is a playable version. On your own, you sit South with the computer (`tuned12`) as your
+`web/` is a playable version. On your own, you sit South with the computer (`tuned13`) as your
 partner and both opponents. You can also play with friends. It uses the same rules engine and
 strategies as the test bench.
 
