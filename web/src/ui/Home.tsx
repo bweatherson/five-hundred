@@ -6,7 +6,7 @@ import { GuestRoom, HostRoom, cleanCode } from "../net/peer.ts";
 import App from "./App.tsx";
 import { CardSvg, SvgDefs } from "./Card.tsx";
 import { HouseRules, loadRules, saveRules, toRulesConfig } from "../game/houseRules.ts";
-import { RulesEditor, RulesSummary } from "./Rules.tsx";
+import { HowToPlay, RulesEditor, RulesSummary } from "./Rules.tsx";
 
 // A claude.ai page can't make the direct connections that games with friends use.
 const NETWORK = import.meta.env.MODE !== "artifact";
@@ -59,7 +59,7 @@ export default function Root() {
 function Home({ joinCode, onSolo, onHost, onJoin }: {
   joinCode: string; onSolo: () => void; onHost: (name: string) => void; onJoin: (code: string, name: string) => void;
 }) {
-  const [mode, setMode] = useState<"pick" | "host" | "join" | "rules">(joinCode ? "join" : "pick");
+  const [mode, setMode] = useState<"pick" | "host" | "join" | "rules" | "howto">(joinCode ? "join" : "pick");
   const [rules, setRules] = useState<HouseRules>(loadRules);
   const [name, setName] = useState(stored("five-hundred-name"));
   const [code, setCode] = useState(joinCode);
@@ -88,13 +88,25 @@ function Home({ joinCode, onSolo, onHost, onJoin }: {
           ) : (
             <p className="lobby-note">Games with friends need the web version of this page; this copy plays against the computer only.</p>
           )}
-          <button className="link rules-link" onClick={() => setMode("rules")}>House rules</button>
+          <div className="home-links">
+            <button className="link" onClick={() => setMode("howto")}>How to play</button>
+            <button className="link" onClick={() => setMode("rules")}>House rules</button>
+          </div>
         </div>
       )}
 
       {mode === "rules" && (
         <div className="home-rules">
           <RulesEditor value={rules} onChange={(h) => { setRules(h); saveRules(h); }} />
+          <div className="home-form-buttons">
+            <button className="primary" onClick={() => setMode("pick")}>Done</button>
+          </div>
+        </div>
+      )}
+
+      {mode === "howto" && (
+        <div className="home-howto">
+          <HowToPlay rules={rules} />
           <div className="home-form-buttons">
             <button className="primary" onClick={() => setMode("pick")}>Done</button>
           </div>
