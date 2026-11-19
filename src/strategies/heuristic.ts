@@ -180,6 +180,9 @@ export interface HeuristicParams {
    * play their lowest card when they can't win, so their remaining trumps must outrank it.
    */
   drawInferOut: number;
+  /** Bid no-trumps only holding at least this many aces (the Joker counts if ntJokerAce). */
+  ntMinAces: number;
+  ntJokerAce: boolean;
 }
 
 export const DEFAULT_HEURISTIC: HeuristicParams = {
@@ -252,6 +255,8 @@ export const DEFAULT_HEURISTIC: HeuristicParams = {
   avoidPartnerVoid: 0,
   drawStopVoid: false,
   drawInferOut: 0,
+  ntMinAces: 0,
+  ntJokerAce: false,
 };
 
 /** Settings for the gap-based misère model and fuller auction signals. */
@@ -424,6 +429,10 @@ function chooseBid(v: BidView, p: HeuristicParams): BidAction {
       const adj = (L: number) => (L >= 7 ? p.aggression7 : 0) + (L >= 8 ? p.aggression8 : 0);
       lvl = 5;
       for (let L = 6; L <= 10; L++) if (est + adj(L) >= L) lvl = L;
+    }
+    if (s === "NT" && p.ntMinAces > 0) {
+      const aces = v.hand.filter((c) => rankOf(c) === 14 && !isJoker(c)).length + (p.ntJokerAce && v.hand.includes("JK") ? 1 : 0);
+      if (aces < p.ntMinAces) lvl = 5;
     }
     maxLevel[s] = lvl;
   }

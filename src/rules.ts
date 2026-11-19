@@ -9,8 +9,12 @@ export interface RulesConfig {
   winScore: number;
   /** Falling to this score or below loses the game. */
   loseScore: number;
+  /** Misère may be bid at all. */
+  allowMisere: boolean;
   /** Misère may only be bid once someone has bid at the 7 level or higher. */
   misereNeedsSeven: boolean;
+  /** Open misère: at any time (standard), only once someone has bid 8 or more, or never. */
+  openMisere: "anytime" | "afterEight" | "off";
   /** Taking all 10 tricks scores at least this much (if the bid is worth less). */
   slamMinimum: number;
   /** If true, the bidding side also scores 10 per trick when it makes its contract. */
@@ -22,7 +26,9 @@ export interface RulesConfig {
 export const DEFAULT_RULES: RulesConfig = {
   winScore: 500,
   loseScore: -500,
+  allowMisere: true,
   misereNeedsSeven: true,
+  openMisere: "anytime",
   slamMinimum: 250,
   bidderScoresTricks: false,
   pointsPerTrick: 10,
@@ -98,15 +104,21 @@ export interface AuctionEntry {
 export function legalBids(auction: AuctionEntry[], rules: RulesConfig): Bid[] {
   let highest: Bid | null = null;
   let reachedSeven = false;
+  let reachedEight = false;
   for (const e of auction) {
     if (e.bid === null) continue;
     highest = e.bid;
     if (e.bid.kind === "suit" && e.bid.tricks >= 7) reachedSeven = true;
-    if (e.bid.kind === "openMisere") reachedSeven = true;
+    if (e.bid.kind === "suit" && e.bid.tricks >= 8) reachedEight = true;
+    if (e.bid.kind === "openMisere") reachedSeven = reachedEight = true;
   }
   return ALL_BIDS.filter((b) => {
     if (highest && bidRank(b) <= bidRank(highest)) return false;
-    if (b.kind === "misere" && rules.misereNeedsSeven && !reachedSeven) return false;
+    if (b.kind === "misere" && (rules.allowMisere === false || (rules.misereNeedsSeven && !reachedSeven))) return false;
+    if (b.kind === "openMisere") {
+      const om = rules.openMisere ?? "anytime";
+      if (om === "off" || (om === "afterEight" && !reachedEight)) return false;
+    }
     return true;
   });
 }

@@ -8,6 +8,7 @@
 import Peer, { DataConnection } from "peerjs";
 import { Action, HostSession, Session } from "../game/session.ts";
 import { Table, TableSnapshot } from "../game/table.ts";
+import { HouseRules, STANDARD_RULES, toRulesConfig } from "../game/houseRules.ts";
 
 const PREFIX = "five-hundred-table-v1-";
 // Consonants only, so a code is easy to read out and never spells anything.
@@ -30,7 +31,7 @@ export interface SeatInfo {
 }
 
 type ToGuest =
-  | { type: "lobby"; code: string; seats: SeatInfo[]; guests: string[]; you: string }
+  | { type: "lobby"; code: string; seats: SeatInfo[]; guests: string[]; you: string; rules?: HouseRules }
   | { type: "state"; seat: number; snap: TableSnapshot }
   | { type: "error"; message: string };
 
@@ -69,7 +70,7 @@ export class HostRoom {
   error: string | null = null;
   private listeners = new Set<() => void>();
 
-  constructor(public hostName: string) {
+  constructor(public hostName: string, public rules: HouseRules = STANDARD_RULES) {
     this.peer = this.open();
   }
 
@@ -181,6 +182,13 @@ export class HostRoom {
     this.changed();
   }
 
+  /** Change the house rules (only before the game starts). */
+  setRules(h: HouseRules) {
+    if (this.session) return;
+    this.rules = h;
+    this.changed();
+  }
+
   /** Put a guest (or the computer, for null) in a seat; whoever was there moves to theirs. */
   assign(seat: number, id: string | null) {
     if (seat === 0 || this.session) return;
@@ -191,7 +199,7 @@ export class HostRoom {
   }
 
   start() {
-    const t = new Table();
+    const t = new Table(undefined, undefined, toRulesConfig(this.rules));
     t.humans = this.seats.map((s) => s !== null);
     const info = this.seatInfo();
     t.names = info.map((s) => (s.kind === "computer" ? "" : s.name));
@@ -210,7 +218,7 @@ export class HostRoom {
       if (this.session && seat > 0) {
         send(g.conn, { type: "state", seat, snap: this.session.t.snapshot(seat) });
       } else {
-        send(g.conn, { type: "lobby", code: this.code, seats: info, guests: this.guests.map((x) => x.name), you: g.id });
+        send(g.conn, { type: "lobby", code: this.code, seats: info, guests: this.guests.map((x) => x.name), you: g.id, rules: this.rules });
       }
     }
   }
@@ -237,6 +245,7 @@ export class GuestRoom implements Session {
   phase: "connecting" | "lobby" | "playing" | "closed" = "connecting";
   seats: SeatInfo[] = [];
   myId = "";
+  rules: HouseRules = STANDARD_RULES;
   error: string | null = null;
   status?: string;
   private t: Table | null = null;
@@ -259,6 +268,7 @@ export class GuestRoom implements Session {
         this.phase = "lobby";
         this.seats = msg.seats;
         this.myId = msg.you;
+        if (msg.rules) this.rules = msg.rules;
       } else if (msg.type === "state") {
         this.phase = "playing";
         this.me = msg.seat;

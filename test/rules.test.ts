@@ -47,6 +47,19 @@ describe("bids", () => {
     expect(has(legalBids([{ seat: 1, bid: suit(7, "S") }, { seat: 2, bid: suit(8, "C") }], DEFAULT_RULES), "misere")).toBe(false);
     expect(has(legalBids([], DEFAULT_RULES), "openMisere")).toBe(true);
   });
+  it("follows the misère house rules", () => {
+    const has = (bids: Bid[], k: string) => bids.some((b) => b.kind === k);
+    const eight = { ...DEFAULT_RULES, openMisere: "afterEight" as const };
+    expect(has(legalBids([], eight), "openMisere")).toBe(false);
+    expect(has(legalBids([{ seat: 1, bid: suit(7, "NT") }], eight), "openMisere")).toBe(false);
+    expect(has(legalBids([{ seat: 1, bid: suit(8, "S") }], eight), "openMisere")).toBe(true);
+    const noOpen = { ...DEFAULT_RULES, openMisere: "off" as const };
+    expect(has(legalBids([{ seat: 1, bid: suit(9, "S") }], noOpen), "openMisere")).toBe(false);
+    const anyMis = { ...DEFAULT_RULES, misereNeedsSeven: false };
+    expect(has(legalBids([], anyMis), "misere")).toBe(true);
+    const noMis = { ...DEFAULT_RULES, allowMisere: false };
+    expect(has(legalBids([{ seat: 1, bid: suit(7, "S") }], noMis), "misere")).toBe(false);
+  });
   it("only allows bids above the current high bid", () => {
     const legal = legalBids([{ seat: 1, bid: suit(7, "D") }, { seat: 2, bid: null }], DEFAULT_RULES);
     expect(legal.every((b) => bidRank(b) > bidRank(suit(7, "D")))).toBe(true);

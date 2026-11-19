@@ -84,7 +84,8 @@ export class Table {
   gameNo = 1;
   private adviceRng: Rng;
 
-  constructor(aiSpec = "tuned13", seed = Date.now()) {
+  constructor(aiSpec = "tuned14", seed = Date.now(), rules: RulesConfig = DEFAULT_RULES) {
+    this.rules = rules;
     this.ai = makeStrategy(aiSpec);
     this.rng = makeRng(seed >>> 0);
     this.adviceRng = makeRng((seed ^ 0x5bd1e995) >>> 0);

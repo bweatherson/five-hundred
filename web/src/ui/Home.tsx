@@ -5,6 +5,8 @@ import { Table } from "../game/table.ts";
 import { GuestRoom, HostRoom, cleanCode } from "../net/peer.ts";
 import App from "./App.tsx";
 import { CardSvg, SvgDefs } from "./Card.tsx";
+import { HouseRules, loadRules, saveRules, toRulesConfig } from "../game/houseRules.ts";
+import { RulesEditor, RulesSummary } from "./Rules.tsx";
 
 // A claude.ai page can't make the direct connections that games with friends use.
 const NETWORK = import.meta.env.MODE !== "artifact";
@@ -47,8 +49,8 @@ export default function Root() {
   return (
     <Home
       joinCode={joinCode}
-      onSolo={() => setScreen({ kind: "solo", session: new HostSession(new Table()) })}
-      onHost={(name) => setScreen({ kind: "host", room: new HostRoom(name) })}
+      onSolo={() => setScreen({ kind: "solo", session: new HostSession(new Table(undefined, undefined, toRulesConfig(loadRules()))) })}
+      onHost={(name) => setScreen({ kind: "host", room: new HostRoom(name, loadRules()) })}
       onJoin={(code, name) => setScreen({ kind: "guest", room: new GuestRoom(code, name) })}
     />
   );
@@ -57,7 +59,8 @@ export default function Root() {
 function Home({ joinCode, onSolo, onHost, onJoin }: {
   joinCode: string; onSolo: () => void; onHost: (name: string) => void; onJoin: (code: string, name: string) => void;
 }) {
-  const [mode, setMode] = useState<"pick" | "host" | "join">(joinCode ? "join" : "pick");
+  const [mode, setMode] = useState<"pick" | "host" | "join" | "rules">(joinCode ? "join" : "pick");
+  const [rules, setRules] = useState<HouseRules>(loadRules);
   const [name, setName] = useState(stored("five-hundred-name"));
   const [code, setCode] = useState(joinCode);
   const nameOk = name.trim().length > 0;
@@ -85,10 +88,20 @@ function Home({ joinCode, onSolo, onHost, onJoin }: {
           ) : (
             <p className="lobby-note">Games with friends need the web version of this page; this copy plays against the computer only.</p>
           )}
+          <button className="link rules-link" onClick={() => setMode("rules")}>House rules</button>
         </div>
       )}
 
-      {mode !== "pick" && (
+      {mode === "rules" && (
+        <div className="home-rules">
+          <RulesEditor value={rules} onChange={(h) => { setRules(h); saveRules(h); }} />
+          <div className="home-form-buttons">
+            <button className="primary" onClick={() => setMode("pick")}>Done</button>
+          </div>
+        </div>
+      )}
+
+      {(mode === "host" || mode === "join") && (
         <form
           className="home-form"
           onSubmit={(e) => {
@@ -128,6 +141,7 @@ const SEAT_LABEL = ["You (host)", "West", "Your partner", "East"];
 function HostScreen({ room, onLeave }: { room: HostRoom; onLeave: () => void }) {
   useSubscribe(room);
   const [copied, setCopied] = useState(false);
+  const [editRules, setEditRules] = useState(false);
   if (room.session) return <App session={room.session} onNewGame={() => room.session!.newGame()} onLeave={onLeave} />;
   const info = room.seatInfo();
   const link = `${location.origin}${location.pathname}#join=${room.code}`;
@@ -168,6 +182,11 @@ function HostScreen({ room, onLeave }: { room: HostRoom; onLeave: () => void }) 
           </div>
         ))}
       </div>
+      <div className="lobby-rules">
+        <RulesSummary value={room.rules} />
+        <button className="link" onClick={() => setEditRules(!editRules)}>{editRules ? "Done" : "Change"}</button>
+      </div>
+      {editRules && <RulesEditor value={room.rules} onChange={(h) => { room.setRules(h); saveRules(h); }} />}
       <p className="lobby-note">
         {connected.length === 0 ? "Waiting for friends to join. Empty seats are played by the computer." : `${connected.length} joined. Choose who sits where, then start.`}
       </p>
@@ -198,6 +217,7 @@ function GuestScreen({ room, onLeave }: { room: GuestRoom; onLeave: () => void }
               </div>
             ))}
           </div>
+          <RulesSummary value={room.rules} />
         </>
       )}
       <div className="home-form-buttons">

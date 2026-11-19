@@ -23,6 +23,7 @@ npm run sweep -- --base tuned5 --deals 60000 --jobs 8 --mode near tuned6   # onl
 npx tsx src/probe.ts run 50000 1 0 tuned7 > p0.jsonl   # single-decision probe (situations in src/probe-situations.ts)
 npx tsx src/probe.ts run 500000 1 0 tuned10 tuned10 misere > m0.jsonl   # the same, misère hands only
 npx tsx src/probe-draw.ts tuned13 20000              # trump leads after the opponents are out
+npx tsx src/probe-nt.ts tuned14 50000                # no-trump contracts by the bidder's aces
 npx tsx src/probe-discard.ts run 500000 1 0 tuned10 > k0.jsonl   # misère kitty-discard probe; report with: npx tsx src/probe-discard.ts report k*.jsonl
 npx tsx src/probe.ts report p*.jsonl --min 300          # paired results by situation and sub-case
 ```
@@ -179,7 +180,7 @@ Implement `Strategy` (`bid`, `discard`, `play`, and optionally `jokerSuit`), the
 
 ## Playing in the browser
 
-`web/` is a playable version. On your own, you sit South with the computer (`tuned13`) as your
+`web/` is a playable version. On your own, you sit South with the computer (`tuned14`) as your
 partner and both opponents. You can also play with friends. It uses the same rules engine and
 strategies as the test bench.
 
@@ -196,6 +197,12 @@ game and sends each player only what their seat can see. If a guest drops out, t
 their seat until they rejoin under the same name. If the host closes the page, the game ends.
 Browsers find each other through PeerJS's free public broker and then connect directly, so no
 server of our own is needed. Anyone with the code can join a table before it starts.
+
+**House rules.** *House rules* on the opening screen sets when misère and open misère may be bid
+(misère: after a 7 bid, any time, or never; open misère: any time, after an 8 bid, or never) and
+whether taking all ten tricks scores at least 250. The defaults are the standard rules: misère after
+a 7 bid, open misère any time, all ten tricks at least 250. A host can change them in the lobby, and
+guests see them there. The computer was tuned on the standard rules.
 
 **Review.** At the end of each hand, *Review* lists every bid, discard and card where the computer
 would have chosen differently in your place. Plays with only one legal card aren't counted.
@@ -217,4 +224,4 @@ Files:
 - `web/src/net/peer.ts` is hosting and joining.
 - `web/src/ui/Card.tsx` draws the cards as SVG.
 - `web/src/ui/App.tsx` is the table, bidding panel, kitty and score screens; `Home.tsx` is the
-  opening screen and lobby; `Review.tsx` is the end-of-hand review.
+  opening screen and lobby; `Rules.tsx` and `game/houseRules.ts` are the house rules; `Review.tsx` is the end-of-hand review.

@@ -36,9 +36,10 @@ in [README.md](README.md).
 | `tuned11` | the bidder draws trumps with its highest trump when it lacks the top one | +9.3 to +9.8 pts/deal (two seeds), +0.9 win-prob pts/deal vs `tuned10` |
 | `tuned12` | defenders on lead from trick 3 with only 1–2 trumps out lead a low trump | +0.5 to +0.6 pts/deal (two seeds), +0.0 win-prob pts/deal vs `tuned11` |
 | `tuned13` | the bidding side stops leading trumps once both opponents are out of them (shown out, or inferred from a high trump dropped under a winner) | +1.0 ± 0.2 pts/deal (also against the weaker field), +0.1 win-prob pts/deal vs `tuned12` |
+| `tuned14` | no no-trump bids without an ace (the Joker alone isn't enough) | −0.1 ± 0.3 pts/deal, +0.2 ± 0.1 win-prob pts/deal (three seeds) vs `tuned13` |
 | `sim:policy=tuned2` | simulation card play on top of `tuned2` | +29.6 pts/deal vs `tuned2` |
 
-## What goes into each decision (current best: `tuned13`, and `sim` for card play)
+## What goes into each decision (current best: `tuned14`, and `sim` for card play)
 
 ### Bidding (`tuned4`–`tuned6`)
 
@@ -667,6 +668,26 @@ it has left must outrank the one it dropped. Allowing one higher unseen trump is
 (`drawInferOut=1`) makes it +1.0 ± 0.2 against `tuned12`, +1.0 against `heuristic`–`tuned5` and +0.9
 against `tuned6`–`tuned10` (60k deals each), and +0.1 win-prob pts/deal in win mode. Against people,
 who sometimes drop a high trump to mislead, the inference can be wrong; a low trump never triggers it.
+
+### No-trumps without an ace (`tuned14`)
+
+Spotted in play: the computer suggested 6NT on the Joker and two kings with no aces. The fitted NT
+estimate is linear, so the Joker (+1.5 tricks) and guarded kings (+0.5 each) can add up to a 6-level
+bid without any ace. Over 50,000 deals of `tuned13` self-play (`src/probe-nt.ts`), no-trump contracts
+by the bidder's hand before the kitty:
+
+| bidder held | contracts | made | avg score | tricks over the bid |
+|---|---|---|---|---|
+| Joker, no aces | 1,156 | 69% | +63 | +0.17 |
+| Joker, 1 ace | 4,300 | 82% | +106 | +0.79 |
+| Joker, 2 aces | 3,158 | 87% | +121 | +1.21 |
+| no Joker, 1 ace | 817 | 70% | +85 | +0.18 |
+| no Joker, 2 aces | 1,722 | 75% | +105 | +0.53 |
+
+Requiring a real ace for any NT bid (`ntMinAces=1`) is neutral on points (−0.1 ± 0.3 against
+`tuned13`, −0.2 and −0.1 against the two halves of the weaker field) but gains +0.2 ± 0.1 win-prob
+pts/deal in win mode on each of three seeds. Requiring two aces with the Joker counting as one was
+neutral on points (+0.0 ± 0.5).
 
 ### Near 500
 

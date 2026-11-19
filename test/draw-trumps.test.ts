@@ -36,3 +36,15 @@ describe("drawing trumps", () => {
     expect(isTrump(makeStrategy("tuned13").play(v), "H")).toBe(true);
   });
 });
+
+describe("no-trump bids", () => {
+  it("tuned14 won't bid no-trumps without an ace", () => {
+    const hand: Card[] = ["JK", "KS", "QS", "9S", "KH", "QH", "8H", "KC", "QC", "KD"];
+    const v = { seat: 1, dealer: 0, rules: DEFAULT_RULES, scores: [0, 0] as [number, number], hand, auction: [], rng: makeRng(1),
+      legal: (["S", "C", "D", "H", "NT"] as const).map((strain) => ({ kind: "suit" as const, tricks: 6, strain })) };
+    const b13 = makeStrategy("tuned13").bid(v);
+    const b14 = makeStrategy("tuned14").bid(v);
+    expect(b13 && b13.kind === "suit" ? b13.strain : null).toBe("NT");
+    expect(b14 && b14.kind === "suit" ? b14.strain : null).not.toBe("NT");
+  });
+});

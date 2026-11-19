@@ -1,6 +1,7 @@
 import { CSSProperties, Fragment, createContext, useContext, useEffect, useState } from "react";
 import { Card, Suit, SUITS } from "../../../src/cards.ts";
 import { Bid, BidAction, bidValue, Strain, teamOf } from "../../../src/rules.ts";
+import { fromRulesConfig, misereNote } from "../game/houseRules.ts";
 import { RELATIVE_NAMES, Table } from "../game/table.ts";
 import { Session } from "../game/session.ts";
 import { CardSvg, SuitIcon, SvgDefs } from "./Card.tsx";
@@ -387,7 +388,7 @@ function CenterPrompt({ t, actor, onBid }: { t: Table; actor: number | null; onB
         ))}
         <button className="bid-cell wide pass-btn" onClick={() => onBid(null)}>Pass</button>
       </div>
-      <p className="bid-foot">Misère needs a 7 bid first. Once you pass, you're out of the auction.</p>
+      <p className="bid-foot">{misereNote(fromRulesConfig(t.rules))} Once you pass, you're out of the auction.</p>
     </div>
   );
 }
