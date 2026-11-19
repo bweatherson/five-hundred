@@ -37,9 +37,13 @@ in [README.md](README.md).
 | `tuned12` | defenders on lead from trick 3 with only 1–2 trumps out lead a low trump | +0.5 to +0.6 pts/deal (two seeds), +0.0 win-prob pts/deal vs `tuned11` |
 | `tuned13` | the bidding side stops leading trumps once both opponents are out of them (shown out, or inferred from a high trump dropped under a winner) | +1.0 ± 0.2 pts/deal (also against the weaker field), +0.1 win-prob pts/deal vs `tuned12` |
 | `tuned14` | no no-trump bids without an ace (the Joker alone isn't enough) | −0.1 ± 0.3 pts/deal, +0.2 ± 0.1 win-prob pts/deal (three seeds) vs `tuned13` |
+| `tuned15` | misère: the bidder doesn't throw cards that can never win; defenders count the open misère hand and don't lead into the bidder's voids | +0.1 ± 0.0 pts/deal vs `tuned14`; open misère made 85.6% → 84.1% |
+| `tuned16` | jump bids: bid straight to the highest level we'd play, but no higher than the cheapest bid that wins the game | +5.0 ± 0.5 pts/deal, +0.6 / +0.5 ± 0.1 win-prob pts/deal (two seeds) vs `tuned15`; +4.4 ± 1.3 vs the field |
+| `tuned17` | stop drawing trumps when one is out and partner bid the trump suit (it's probably partner's) | +0.1 ± 0.1, +0.1 ± 0.0 pts/deal (two seeds), +0.0 ± 0.0 win-prob vs `tuned16` |
+| `tuned18` | defenders win an opponent's top trump lead with the Joker (still keeping it under lower trumps) | +3.2 ± 0.2 pts/deal, +0.3 ± 0.0 win-prob vs `tuned17`; ±0.0 vs the field |
 | `sim:policy=tuned2` | simulation card play on top of `tuned2` | +29.6 pts/deal vs `tuned2` |
 
-## What goes into each decision (current best: `tuned14`, and `sim` for card play)
+## What goes into each decision (current best: `tuned18`, and `sim` for card play)
 
 ### Bidding (`tuned4`–`tuned6`)
 
@@ -688,6 +692,89 @@ Requiring a real ace for any NT bid (`ntMinAces=1`) is neutral on points (−0.1
 `tuned13`, −0.2 and −0.1 against the two halves of the weaker field) but gains +0.2 ± 0.1 win-prob
 pts/deal in win mode on each of three seeds. Requiring two aces with the Joker counting as one was
 neutral on points (+0.0 ± 0.5).
+
+### Misère fixes from play (`tuned15`)
+
+Three things spotted in play, measured with `src/probe-misere.ts`. It deals hands until a seat
+holds one the computer would bid misère (or open misère) on, gives that seat the contract and kitty,
+and plays each hand once per bidder/defender pairing on the same cards.
+
+- **The bidder threw a singleton 4 instead of an ace** (`misereBid` 8). When void, the rule was the
+  top card of the shortest suit. A card with no unseen card below it can never win, so throwing it
+  gains nothing. Skipping such suits: misères made +0.3 ± 0.2 (5,000 hands; 71.0% vs 70.7% over
+  2M duplicate deals).
+- **Open misère defenders led into the bidder's void.** The defence's "suits the bidder still holds"
+  check used only unseen cards, and the open hand isn't unseen, so it was always empty: the
+  targeted leads never fired and the fallback led the lowest card in any suit. With the open hand
+  counted, and no leads into a suit the bidder is known to be out of (`misereDef` 16): open misère
+  made 85.6% → 84.1% (−1.5 ± 0.6, 3,000 hands), closed misère −0.7 ± 0.3.
+- **The bidder's lead of the 7 from J-7 looked reckless** (`misereLeadBelow`, off). Only leading from
+  suits whose lowest card has at most *k* unseen cards below it, vs low from the shortest suit
+  (5,000 closed misère hands): *k* = 0 −2.7 ± 0.9, 1 −1.0 ± 0.5, 2 −0.3 ± 0.4; only when already void
+  (`misereBid` 32): −2.0 / −0.8. Emptying a short suit is worth more than the safe lead.
+
+Open misère is still made far too often (84%). The defenders can see the bidder's hand and could
+plan to put the partner with the low card on lead; nothing does that yet. A search-based defence (`sim`, 20 worlds, every world
+solved exactly to the end) cut it to 80% against the heuristic's 90% on 60 hands (−10 ± 8), but took
+about 30 seconds of computing per hand: too slow for the web game as it stands.
+
+### Jump bids and not pushing the opponents up (`tuned16`)
+
+Spotted in play: the computer never opened above 6. It found the highest level it would play in its
+best strain, then made the cheapest legal bid there, and only climbed if outbid. A player could
+compete cheaply, or pass to avoid pushing a low opener into a higher contract it would make.
+
+Bidding straight to that maximum (`jump=true`), vs `tuned15`:
+
+| Variant | pts/deal (200k, two seeds) | win-prob pts/deal (60k) | near 500 (30k) |
+|---|---|---|---|
+| `jump` | +5.0 ± 0.5, +5.1 ± 0.5 | −0.0 ± 0.1 | −1.1 ± 0.3 |
+| `jump` + `jumpToWin` (stop at the cheapest bid that wins the game) | +5.0 ± 0.5 | +0.6 ± 0.1, +0.5 ± 0.1 (two seeds) | +0.4 ± 0.2 |
+
+Contracts made fall from 82.1% to 79.5%, but each is worth more, and the opponents get fewer cheap
+overcalls. Against the field: +4.4 ± 1.3 (+4.9 against `heuristic`–`tuned5`, +3.9 against
+`tuned6`–`tuned10`). Opening one level below the maximum (`jumpOpen`) gained only +0.6.
+
+The opposite worry, "don't overcall, or the opener will raise and make it" (`noPush`): pass instead
+of overcalling an opponent when the estimate clears the bid by less than *m* tricks. Even against
+`tuned15`, whose 6-level openings could hide much more:
+
+| *m* | always | only when partner has passed |
+|---|---|---|
+| 0.5 | −25.6 ± 0.6 | −13.0 ± 0.4 |
+| 1 | −37.6 ± 0.7 | −17.8 ± 0.5 |
+
+Competing is right. Against jump bidders the worry shrinks anyway: a 6-level opening shows no more.
+
+### Partner's trumps (`tuned17`)
+
+Spotted in play: 6♦ by us, 7♦ by partner, 8♦ by us. Two rounds of trumps, everyone followed, one
+trump out. Partner wouldn't raise with two diamonds, so the last trump is almost surely partner's,
+and leading the Joker would only pull it. `drawStopVoid`'s inference already covers the case where
+the missing trump is low (an opponent with it would have played it first). The new rule
+(`drawPartnerHolds`=*k*): stop drawing when at most *k* trumps are out, partner bid the trump suit,
+and partner hasn't shown out. *k* = 1: +0.1 ± 0.1 and +0.1 ± 0.0 pts/deal (200k and 400k deals),
++0.0 ± 0.0 win-prob. *k* = 2 was the same as 1.
+
+### The defenders' Joker against a top trump lead (`tuned18`)
+
+Spotted in play: East bid 6♥ and led the right bower; we held the Joker, left bower, A♥ and small
+hearts. The computer would have kept the Joker (playing the 5♥) and gone off trumps next. Two ideas,
+vs `tuned17` (200k deals, seed 11):
+
+- **Play like the bidder when you hold the trumps** (`defControl`=*n*, `defControlMax`=*m*): with the
+  Joker and *n*+ trumps against a contract of at most *m*, win the trump lead with the Joker and lead
+  boss trumps after. *n* = 4/5 at *m* = 6: +0.2 / +0.1; *m* = 7: +1.4 / +0.4; *n* = 1–3 at *m* = 10:
+  +2.4 to +2.6. The gain grew as the rule got broader, which pointed at the Joker play.
+- **Never keep the Joker** (`jokerDuck=0`): +3.5 ± 0.2 and +3.4 ± 0.2 (seed 12), +0.3 win-prob, but
+  −4.2 ± 0.5 against the field. `jokerDuck` was worth +4.9 in `tuned8`, when bidders led low trumps.
+  Since `tuned11` the bidder leads its top trump when it lacks the Joker, and ducking under a right
+  bower just gives that trick away. The old players still lead low.
+- **Keep the Joker, except under a top trump** (`jokerDuck=3`: nothing unseen but the Joker beats the
+  card winning the trick): +3.2 ± 0.2 pts/deal, +0.3 ± 0.0 win-prob, ±0.0 against the field (their
+  bidders never lead a top trump). Adopted.
+- Adding the trump-drawing lead to either Joker rule: +2.6, worse than the Joker rule alone. Once
+  the Joker has won, leading boss trumps from the defence still does the bidder's drawing for it.
 
 ### Near 500
 

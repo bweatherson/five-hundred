@@ -5,11 +5,13 @@ import { DEFAULT_RULES, RulesConfig } from "../../../src/rules.ts";
 export interface HouseRules {
   misere: "afterSeven" | "anytime" | "off";
   openMisere: "anytime" | "afterEight" | "off";
+  /** In a misère, the opponents score 10 per trick they take. */
+  misereTricks: boolean;
   /** Taking all ten tricks scores at least 250. */
   slam: boolean;
 }
 
-export const STANDARD_RULES: HouseRules = { misere: "afterSeven", openMisere: "anytime", slam: true };
+export const STANDARD_RULES: HouseRules = { misere: "afterSeven", openMisere: "anytime", misereTricks: false, slam: true };
 
 export const RULE_CHOICES: {
   key: keyof HouseRules;
@@ -35,6 +37,14 @@ export const RULE_CHOICES: {
     ],
   },
   {
+    key: "misereTricks",
+    label: "Misère opponents",
+    options: [
+      { value: false, label: "Score nothing" },
+      { value: true, label: "Score 10 a trick" },
+    ],
+  },
+  {
     key: "slam",
     label: "All ten tricks",
     options: [
@@ -50,6 +60,7 @@ export function toRulesConfig(h: HouseRules): RulesConfig {
     allowMisere: h.misere !== "off",
     misereNeedsSeven: h.misere === "afterSeven",
     openMisere: h.openMisere,
+    misereTricksScore: h.misereTricks,
     slamMinimum: h.slam ? 250 : 0,
   };
 }
@@ -58,12 +69,13 @@ export function fromRulesConfig(r: RulesConfig): HouseRules {
   return {
     misere: r.allowMisere === false ? "off" : r.misereNeedsSeven ? "afterSeven" : "anytime",
     openMisere: r.openMisere ?? "anytime",
+    misereTricks: r.misereTricksScore === true,
     slam: r.slamMinimum >= 250,
   };
 }
 
 export function isStandard(h: HouseRules) {
-  return h.misere === STANDARD_RULES.misere && h.openMisere === STANDARD_RULES.openMisere && h.slam === STANDARD_RULES.slam;
+  return RULE_CHOICES.every((c) => h[c.key] === STANDARD_RULES[c.key]);
 }
 
 /** One line for the bidding panel. */

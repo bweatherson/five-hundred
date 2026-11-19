@@ -109,10 +109,15 @@ describe("scoring", () => {
     expect(scoreHand(makeContract(suit(6, "S"), 0), [10, 0], R).points).toEqual([250, 0]);
     expect(scoreHand(makeContract(suit(8, "H"), 0), [10, 0], R).points).toEqual([300, 0]);
   });
-  it("scores misère, with defenders still scoring their tricks", () => {
-    expect(scoreHand(makeContract(MIS, 2), [0, 10], R)).toEqual({ points: [250, 100], made: true });
-    expect(scoreHand(makeContract(MIS, 2), [2, 8], R)).toEqual({ points: [-250, 80], made: false });
-    expect(scoreHand(makeContract(OPEN, 3), [10, 0], R)).toEqual({ points: [100, 500], made: true });
+  it("scores misère, with the opponents scoring nothing", () => {
+    expect(scoreHand(makeContract(MIS, 2), [0, 10], R)).toEqual({ points: [250, 0], made: true });
+    expect(scoreHand(makeContract(MIS, 2), [2, 8], R)).toEqual({ points: [-250, 0], made: false });
+    expect(scoreHand(makeContract(OPEN, 3), [10, 0], R)).toEqual({ points: [0, 500], made: true });
+  });
+  it("supports the house rule where misère opponents score their tricks", () => {
+    const rules = { ...R, misereTricksScore: true };
+    expect(scoreHand(makeContract(MIS, 2), [0, 10], rules)).toEqual({ points: [250, 100], made: true });
+    expect(scoreHand(makeContract(MIS, 2), [2, 8], rules)).toEqual({ points: [-250, 80], made: false });
   });
   it("supports the optional rule where bidders also score tricks", () => {
     const rules = { ...R, bidderScoresTricks: true };

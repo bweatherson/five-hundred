@@ -27,6 +27,14 @@ export interface HeuristicParams {
   openMisereDanger: number;
   /** Bid straight to our maximum instead of the cheapest legal bid. */
   jump: boolean;
+  /** With jump: stop at the cheapest bid that would win the game. */
+  jumpToWin: boolean;
+  /** Jump: open (first bid of the auction) at the level below our maximum, when the maximum is at least this (0 = off). */
+  jumpOpen: number;
+  /** Don't push: pass instead of overcalling an opponent's bid when our estimate clears the bid by less than this (0 = off). */
+  noPush: number;
+  /** noPush: 1 = only when partner has passed (0 = always). */
+  noPushMode: number;
 
   // --- Reacting to the auction -------------------------------------------
   /** Multiplies every auction-signal adjustment below (0 = ignore the auction). */
@@ -136,18 +144,23 @@ export interface HeuristicParams {
   discardOppVoid: number;
   /** Guarded discards: cost reduction per card held in the suit (prefer the long suit). */
   discardLong: number;
-  /** Defender holding the Joker and other trumps, not last to play on an opponent's trump lead: keep the Joker, play the lowest other trump (1 = bidder's lead, 2 = either opponent's). */
+  /** Defender holding the Joker and other trumps, not last to play on an opponent's trump lead: keep the Joker, play the lowest other trump (1 = bidder's lead, 2 = either opponent's, 3 = as 2 but win a top trump with the Joker). */
   jokerDuck: number;
+  /** Defender in control: holding the Joker and at least this many trumps (counting ones already played) against a contract of at most defControlMax tricks, play like the bidder: win the opponent's trump lead with the Joker, and lead boss trumps to draw theirs (0 = off). */
+  defControl: number;
+  defControlMax: number;
   /** Defender on lead from trick N on, needing 2+ tricks, holding 1-2 trumps (no Joker) with trumps out: lead the top trump (0 = off). */
   lateTrumpLead: number;
   /** Defender on lead from this trick on, with 1-2 trumps out: lead a trump (0 = off). */
   fewTrumpsLead: number;
   /** fewTrumpsLead: 1 = before cashing side winners, 2 = after; +4 = lead the highest trump. */
   fewTrumpsMode: number;
-  /** Misère defence, bit flags: 1 = when you must beat the bidder's card, or partner already has, play your highest; 2 = discard your highest; 4 = lead the bottom card of a suit the bidder may hold; 8 = with the bidder last, strip a suit where you hold the bottom by leading its top card (tricks 1-6). */
+  /** Misère defence, bit flags: 1 = when you must beat the bidder's card, or partner already has, play your highest; 2 = discard your highest; 4 = lead the bottom card of a suit the bidder may hold; 8 = with the bidder last, strip a suit where you hold the bottom by leading its top card (tricks 1-6); 16 = count the open misère hand as the bidder's cards, and don't lead a suit the bidder is known to be out of if you can avoid it. */
   misereDef: number;
-  /** Misère bidder, bit flags: 1 = tricks 1-3, lead low from the shortest suit; 2 = from trick 4, lead the highest card with 2+ unseen cards below it; 4 = discard the top card of the shortest suit. */
+  /** Misère bidder, bit flags: 1 = tricks 1-3, lead low from the shortest suit; 2 = from trick 4, lead the highest card with 2+ unseen cards below it; 4 = discard the top card of the shortest suit; 32 = use misereLeadBelow only when already out of a suit; 8 = with 4, skip suits where no unseen card is lower than our top card (those cards can never win, so there's nothing to gain by throwing them). */
   misereBid: number;
+  /** Misère bidder's lead (with misereBid & 1): only lead from suits whose lowest card has at most this many unseen cards below it; if there are none, lead the card with the fewest (−1 = off). */
+  misereLeadBelow: number;
   /** Bidder drawing trumps without the boss trump: lead the highest trump instead of the lowest. */
   drawHigh: boolean;
   /** Bidder's partner: when the bidder leads a trump that isn't boss, play the Joker on it. */
@@ -174,6 +187,8 @@ export interface HeuristicParams {
   avoidPartnerVoid: number;
   /** Bidding side: stop leading trumps once both opponents are known (or inferred) to be out of them. */
   drawStopVoid: boolean;
+  /** Stop drawing trumps when at most this many are out and partner bid the trump suit (and hasn't shown out): they're probably partner's (0 = off). */
+  drawPartnerHolds: number;
   /**
    * Infer an opponent is out of trumps when they followed a trump lead with a trump that didn't
    * win the trick and at most `drawInferOut - 1` unseen trumps outrank it (0 = off). Defenders
@@ -193,6 +208,10 @@ export const DEFAULT_HEURISTIC: HeuristicParams = {
   misereDanger: 2,
   openMisereDanger: 0,
   jump: false,
+  jumpToWin: false,
+  jumpOpen: 0,
+  noPush: 0,
+  noPushMode: 0,
   signalWeight: 1,
   partnerBidBoost: 0,
   partnerPassPenalty: 0,
@@ -236,11 +255,14 @@ export const DEFAULT_HEURISTIC: HeuristicParams = {
   discardOppVoid: 0,
   discardLong: 0,
   jokerDuck: 0,
+  defControl: 0,
+  defControlMax: 6,
   lateTrumpLead: 0,
   fewTrumpsLead: 0,
   fewTrumpsMode: 1,
   misereDef: 0,
   misereBid: 0,
+  misereLeadBelow: -1,
   drawHigh: false,
   partnerJoker: false,
   aggression7: 0,
@@ -254,6 +276,7 @@ export const DEFAULT_HEURISTIC: HeuristicParams = {
   avoidBidderVoid: 0,
   avoidPartnerVoid: 0,
   drawStopVoid: false,
+  drawPartnerHolds: 0,
   drawInferOut: 0,
   ntMinAces: 0,
   ntJokerAce: false,
@@ -417,6 +440,7 @@ function chooseBid(v: BidView, p: HeuristicParams): BidAction {
 
   // Maximum level we are willing to go to in each strain.
   const maxLevel = {} as Record<Strain, number>;
+  const estimate = {} as Record<Strain, number>;
   for (const s of STRAINS) {
     const signals = (partnerStrains.has(s) ? p.partnerSupport : 0)
       + (partnerBid ? p.partnerBidBoost : 0)
@@ -435,6 +459,7 @@ function chooseBid(v: BidView, p: HeuristicParams): BidAction {
       if (aces < p.ntMinAces) lvl = 5;
     }
     maxLevel[s] = lvl;
+    estimate[s] = est;
   }
 
   const candidates: Bid[] = v.legal.filter((b) => b.kind === "suit" && b.tricks <= maxLevel[b.strain]);
@@ -459,7 +484,22 @@ function chooseBid(v: BidView, p: HeuristicParams): BidAction {
   const bestCeiling = Math.max(...candidates.map(ceiling));
   const inBest = candidates.filter((b) => ceiling(b) === bestCeiling);
   inBest.sort((a, b) => bidValue(a) - bidValue(b));
-  const chosen = p.jump ? inBest[inBest.length - 1] : inBest[0];
+  let chosen = p.jump ? inBest[inBest.length - 1] : inBest[0];
+  if (p.jump && p.jumpToWin) {
+    // No need to jump past the cheapest bid that wins the game.
+    const wins = inBest.find((b) => ours + bidValue(b) >= v.rules.winScore);
+    if (wins) chosen = wins;
+  }
+  if (p.jumpOpen > 0 && !high && chosen.kind === "suit" && maxLevel[chosen.strain] >= p.jumpOpen) {
+    const lvl = maxLevel[chosen.strain] - 1;
+    const j = inBest.find((b) => b.kind === "suit" && b.tricks === lvl);
+    if (j) chosen = j;
+  }
+  if (p.noPush > 0 && high && !sameTeam(high.seat, v.seat) && chosen.kind === "suit"
+      && (!(p.noPushMode & 1) || partnerPassed)
+      && estimate[chosen.strain] - chosen.tricks < p.noPush) {
+    return null;
+  }
   const passedSeats = new Set(v.auction.filter((e) => e.bid === null).map((e) => e.seat));
   const finalBid = [0, 1, 2, 3].every((x) => x === v.seat || passedSeats.has(x));
   if (p.raiseToStop && (p.raiseToStop === 1 || finalBid) && chosen.kind === "suit" && ours + bidValue(chosen) < v.rules.winScore) {
@@ -585,6 +625,15 @@ function playNormal(v: PlayView, p: HeuristicParams): Card {
   const unseen = unseenCards(v);
   const legal = v.legal;
   const weAreBidders = sameTeam(v.seat, v.contract.bidder);
+  const inControl = (() => {
+    if (p.defControl <= 0 || weAreBidders || trump === null || v.contract.bid.kind !== "suit") return false;
+    if (v.contract.bid.tricks > p.defControlMax) return false;
+    const playedJoker = v.tricks.some((t) => t.plays.some((x) => x.seat === v.seat && x.card === "JK"));
+    if (!v.hand.includes("JK") && !playedJoker) return false;
+    const held = v.hand.filter((c) => isTrump(c, trump)).length;
+    const spent = v.tricks.reduce((n, t) => n + t.plays.filter((x) => x.seat === v.seat && isTrump(x.card, trump)).length, 0);
+    return held + spent >= p.defControl;
+  })();
 
   // Opponents (of this player) who have shown out of a suit and may still hold trumps.
   const voids = knownVoids(v);
@@ -609,7 +658,11 @@ function playNormal(v: PlayView, p: HeuristicParams): Card {
     if (nonJoker.length === 0) return legal[0];
     if (trump !== null && weAreBidders && p.drawTrumps !== "never") {
       const myTrumps = nonJoker.filter((c) => isTrump(c, trump));
-      const enemyTrumpsOut = unseen.some((c) => isTrump(c, trump))
+      const partner = partnerOf(v.seat);
+      const partnerHolds = p.drawPartnerHolds > 0 && !voids[partner].has(trump)
+        && v.auction.some((e) => e.seat === partner && e.bid?.kind === "suit" && e.bid.strain === trump)
+        && unseen.filter((c) => isTrump(c, trump)).length <= p.drawPartnerHolds;
+      const enemyTrumpsOut = unseen.some((c) => isTrump(c, trump)) && !partnerHolds
         && (!p.drawStopVoid || opps.some((o) => !voids[o].has(trump) && !inferredOutOfTrumps(v, o, unseen, p.drawInferOut)));
       // Hold back the last `bidderKeepTrumps` trumps (all leads, or only non-boss ones).
       const total = myTrumps.length + (legal.includes("JK") ? 1 : 0);
@@ -657,6 +710,11 @@ function playNormal(v: PlayView, p: HeuristicParams): Card {
       if (mine.length === 0 || out < 1 || out > 2) return null;
       return p.fewTrumpsMode & 4 ? dearest(mine, trump) : cheapest(mine, trump);
     };
+    if (inControl && unseen.some((c) => isTrump(c, trump!))) {
+      const mine = legal.filter((c) => isTrump(c, trump!));
+      const boss = mine.filter((c) => isBoss(c, v, unseen));
+      if (boss.length > 0) return boss[0];
+    }
     if (p.fewTrumpsMode & 1) { const c = fewTrumps(); if (c) return c; }
     if (p.leadPartnerSuit === 2) { const c = partnerSuitLead(); if (c) return c; }
     if (cashBoss && sideBoss.length > 0) return sideBoss[0];
@@ -780,8 +838,14 @@ function playNormal(v: PlayView, p: HeuristicParams): Card {
       return cheapest(legal, trump);
     }
   }
-  if (p.jokerDuck > 0 && !weAreBidders && trump !== null && v.ledSuit === trump && legal.includes("JK")
-      && (p.jokerDuck === 2 || v.current[0].seat === v.contract.bidder)) {
+  // jokerDuck 3: as 2, but take a top trump (nothing unseen but the Joker beats it) with the Joker.
+  const topLed = (() => {
+    if (p.jokerDuck !== 3 || trump === null || v.ledSuit !== trump || v.current.length === 0) return false;
+    const w = currentWinner(v)!;
+    return !unseen.some((c) => !isJoker(c) && isTrump(c, trump) && cardPower(c, trump, trump) > w.power) && !sameTeam(w.seat, v.seat);
+  })();
+  if (p.jokerDuck > 0 && !weAreBidders && trump !== null && v.ledSuit === trump && legal.includes("JK") && !inControl && !topLed
+      && (p.jokerDuck >= 2 || v.current[0].seat === v.contract.bidder)) {
     const others = legal.filter((c) => !isJoker(c));
     if (others.length > 0) return cheapest(others, trump);
   }
@@ -812,6 +876,16 @@ function playMisere(v: PlayView, p: HeuristicParams): Card {
     };
     if (v.ledSuit === null) {
       if (mine.length > 0 && p.misereBid & 1 && v.tricks.length < 3) {
+        const hasVoid = SUITS.some((su) => !v.hand.some((c) => !isJoker(c) && suitOf(c) === su));
+        if (p.misereLeadBelow >= 0 && (!(p.misereBid & 32) || hasVoid)) {
+          const unseen = unseenCards(v);
+          const below = (c: Card) => unseen.filter((x) => !isJoker(x) && suitOf(x) === suitOf(c) && rankOf(x) < rankOf(c)).length;
+          const n = (su: Suit) => mine.filter((c) => suitOf(c) === su).length;
+          const low = (su: Suit) => lowest(mine.filter((c) => suitOf(c) === su));
+          const suits = SUITS.filter((su) => n(su) > 0 && below(low(su)) <= p.misereLeadBelow);
+          if (suits.length > 0) return low(suits.reduce((a, b) => (n(b) < n(a) ? b : a)));
+          return SUITS.filter((su) => n(su) > 0).map(low).reduce((a, b) => (below(b) < below(a) ? b : a));
+        }
         const su = shortest();
         return lowest(mine.filter((c) => suitOf(c) === su));
       }
@@ -825,6 +899,15 @@ function playMisere(v: PlayView, p: HeuristicParams): Card {
     }
     const voidNow = !legal.some((c) => !isJoker(c) && suitOf(c) === v.ledSuit);
     if (voidNow && mine.length > 0 && p.misereBid & 4) {
+      if (p.misereBid & 8) {
+        const unseen = unseenCards(v);
+        const top = (su: Suit) => highest(mine.filter((c) => suitOf(c) === su));
+        const live = (su: Suit) => unseen.some((x) => !isJoker(x) && suitOf(x) === su && rankOf(x) < rankOf(top(su)));
+        const n = (su: Suit) => mine.filter((c) => suitOf(c) === su).length;
+        const suits = SUITS.filter((su) => n(su) > 0 && live(su));
+        if (suits.length === 0) return highest(legal);
+        return top(suits.reduce((a, b) => (n(b) < n(a) ? b : a)));
+      }
       const su = shortest();
       return highest(mine.filter((c) => suitOf(c) === su));
     }
@@ -838,7 +921,7 @@ function playMisere(v: PlayView, p: HeuristicParams): Card {
   const unseen = unseenCards(v);
   const isBottom = (c: Card) => !isJoker(c) && !unseen.some((x) => !isJoker(x) && suitOf(x) === suitOf(c) && rankOf(x) < rankOf(c));
   const voids = knownVoids(v);
-  const pool = v.exposed ? v.exposed.filter((c) => unseen.includes(c)) : unseen;
+  const pool = v.exposed ? (p.misereDef & 16 ? v.exposed : v.exposed.filter((c) => unseen.includes(c))) : unseen;
   const live = (su: Suit) => !voids[bidder].has(su) && pool.some((c) => !isJoker(c) && suitOf(c) === su);
 
   // Defender: try to force the bidder to win a trick.
@@ -862,6 +945,10 @@ function playMisere(v: PlayView, p: HeuristicParams): Card {
         const b = plain.filter((c) => live(suitOf(c)) && isBottom(c));
         if (b.length > 0) return lowest(b);
       }
+    }
+    if (p.misereDef & 16) {
+      const into = plain.filter((c) => live(suitOf(c)));
+      if (into.length > 0) return lowest(into);
     }
     return lowest(plain.length ? plain : legal);
   }

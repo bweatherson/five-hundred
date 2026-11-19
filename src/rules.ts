@@ -15,6 +15,8 @@ export interface RulesConfig {
   misereNeedsSeven: boolean;
   /** Open misère: at any time (standard), only once someone has bid 8 or more, or never. */
   openMisere: "anytime" | "afterEight" | "off";
+  /** In a misère, the opponents also score 10 per trick they take (not standard). */
+  misereTricksScore: boolean;
   /** Taking all 10 tricks scores at least this much (if the bid is worth less). */
   slamMinimum: number;
   /** If true, the bidding side also scores 10 per trick when it makes its contract. */
@@ -29,6 +31,7 @@ export const DEFAULT_RULES: RulesConfig = {
   allowMisere: true,
   misereNeedsSeven: true,
   openMisere: "anytime",
+  misereTricksScore: false,
   slamMinimum: 250,
   bidderScoresTricks: false,
   pointsPerTrick: 10,
@@ -252,7 +255,8 @@ export function scoreHand(contract: Contract, tricks: [number, number], rules: R
       points[bt] = -value;
     }
   }
-  points[dt] = tricks[dt] * rules.pointsPerTrick;
+  // In a misère the opponents score nothing, unless the house rule says otherwise.
+  points[dt] = contract.misere && !rules.misereTricksScore ? 0 : tricks[dt] * rules.pointsPerTrick;
   return { points, made };
 }
 

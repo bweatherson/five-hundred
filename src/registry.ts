@@ -163,6 +163,58 @@ export const STRATEGIES: Record<string, { describe: string; make: Factory }> = {
       fewTrumpsLead: 3, drawStopVoid: true, drawInferOut: 1, ntMinAces: 1,
     }),
   },
+  tuned15: {
+    describe: "tuned14 + misère: the bidder doesn't discard cards that can never win; defenders count the open misère hand and don't lead into the bidder's voids",
+    make: heur({
+      aggression: -0.5, misereModel: "gap", misereDanger: 1, misereSlack: 1, opponentStrainPenalty: 1.5,
+      secondHandRuff: true, discardMode: "eval", signalBid: 4, signalStrains: "all", partnerSupport: 1.5,
+      stopAtWin: true, desperation: 1, behindScore: 300, behindAdjust: 1,
+      estimateModel: "fit", discardModel: "classic", bidderKeepTrumps: 1,
+      guardDiscards: 2, leadPartnerSuit: 1, aggression7: 0.25, aggression8: -0.25,
+      ruffLow: 2, overtakePartner: 2, secondHandDuck: 1, noBossTrumpLead: 1,
+      jokerDuck: 2, lateTrumpLead: 7, misereDef: 23, misereBid: 13, drawHigh: true,
+      fewTrumpsLead: 3, drawStopVoid: true, drawInferOut: 1, ntMinAces: 1,
+    }),
+  },
+  tuned16: {
+    describe: "tuned15 + jump bids: bid straight to the highest level we would play, but no higher than the cheapest bid that wins the game",
+    make: heur({
+      aggression: -0.5, misereModel: "gap", misereDanger: 1, misereSlack: 1, opponentStrainPenalty: 1.5,
+      secondHandRuff: true, discardMode: "eval", signalBid: 4, signalStrains: "all", partnerSupport: 1.5,
+      stopAtWin: true, desperation: 1, behindScore: 300, behindAdjust: 1,
+      estimateModel: "fit", discardModel: "classic", bidderKeepTrumps: 1,
+      guardDiscards: 2, leadPartnerSuit: 1, aggression7: 0.25, aggression8: -0.25,
+      ruffLow: 2, overtakePartner: 2, secondHandDuck: 1, noBossTrumpLead: 1,
+      jokerDuck: 2, lateTrumpLead: 7, misereDef: 23, misereBid: 13, drawHigh: true,
+      fewTrumpsLead: 3, drawStopVoid: true, drawInferOut: 1, ntMinAces: 1, jump: true, jumpToWin: true,
+    }),
+  },
+  tuned17: {
+    describe: "tuned16 + stop drawing trumps when one is out and partner bid the trump suit: it's probably partner's",
+    make: heur({
+      aggression: -0.5, misereModel: "gap", misereDanger: 1, misereSlack: 1, opponentStrainPenalty: 1.5,
+      secondHandRuff: true, discardMode: "eval", signalBid: 4, signalStrains: "all", partnerSupport: 1.5,
+      stopAtWin: true, desperation: 1, behindScore: 300, behindAdjust: 1,
+      estimateModel: "fit", discardModel: "classic", bidderKeepTrumps: 1,
+      guardDiscards: 2, leadPartnerSuit: 1, aggression7: 0.25, aggression8: -0.25,
+      ruffLow: 2, overtakePartner: 2, secondHandDuck: 1, noBossTrumpLead: 1,
+      jokerDuck: 2, lateTrumpLead: 7, misereDef: 23, misereBid: 13, drawHigh: true,
+      fewTrumpsLead: 3, drawStopVoid: true, drawInferOut: 1, ntMinAces: 1, jump: true, jumpToWin: true, drawPartnerHolds: 1,
+    }),
+  },
+  tuned18: {
+    describe: "tuned17 + defenders win an opponent's top trump lead with the Joker (still keeping it under lower trumps)",
+    make: heur({
+      aggression: -0.5, misereModel: "gap", misereDanger: 1, misereSlack: 1, opponentStrainPenalty: 1.5,
+      secondHandRuff: true, discardMode: "eval", signalBid: 4, signalStrains: "all", partnerSupport: 1.5,
+      stopAtWin: true, desperation: 1, behindScore: 300, behindAdjust: 1,
+      estimateModel: "fit", discardModel: "classic", bidderKeepTrumps: 1,
+      guardDiscards: 2, leadPartnerSuit: 1, aggression7: 0.25, aggression8: -0.25,
+      ruffLow: 2, overtakePartner: 2, secondHandDuck: 1, noBossTrumpLead: 1,
+      jokerDuck: 3, lateTrumpLead: 7, misereDef: 23, misereBid: 13, drawHigh: true,
+      fewTrumpsLead: 3, drawStopVoid: true, drawInferOut: 1, ntMinAces: 1, jump: true, jumpToWin: true, drawPartnerHolds: 1,
+    }),
+  },
   sim: {
     describe: "simulation card play (worlds=N, voids=bool, infer=bool, tries=N, tol=N, endgame=N, policy=name); bids, discards and rollouts use `policy` (default tuned)",
     make: (o) => {

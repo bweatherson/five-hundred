@@ -104,6 +104,10 @@ export function HowToPlay({ rules }: { rules: HouseRules }) {
               below 10♥. {open}
             </p>
           )}
+          <p>
+            Win and you score the bid; take a trick and you lose it.{" "}
+            {rules.misereTricks ? "The opponents score 10 for every trick they take." : "The opponents score nothing either way."}
+          </p>
         </section>
       )}
 
@@ -123,7 +127,7 @@ export function HowToPlay({ rules }: { rules: HouseRules }) {
         <h2>Scoring</h2>
         <p>
           If the bidders take at least as many tricks as they bid, they score the bid; if not, they lose that many
-          points. Either way, the other side scores 10 for every trick it takes.
+          points. Either way, the other side scores 10 for every trick it takes{rules.misereTricks || (!misere && !open) ? "" : " (except in a misère)"}.
           {rules.slam && " Taking all ten tricks scores at least 250, even when the bid is worth less."}
         </p>
         <div className="howto-table-wrap">
