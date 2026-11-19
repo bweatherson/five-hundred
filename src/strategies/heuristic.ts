@@ -21,6 +21,8 @@ export interface HeuristicParams {
   aggression: number;
   /** Extra tricks credited to a strain partner has bid. */
   partnerSupport: number;
+  /** Support bonus when partner's highest bid in the strain was at the 6 level (negative = use partnerSupport). */
+  partnerSupport6: number;
   /** Max "dangerous" cards (before discarding) to bid misère; -1 disables misère. */
   misereDanger: number;
   /** Max dangerous cards, judged strictly, to bid open misère; -1 disables. */
@@ -209,6 +211,7 @@ export const DEFAULT_HEURISTIC: HeuristicParams = {
   kittyTricks: 0.5,
   aggression: 0,
   partnerSupport: 1,
+  partnerSupport6: -1,
   misereDanger: 2,
   openMisereDanger: 0,
   jump: false,
@@ -416,6 +419,12 @@ function chooseBid(v: BidView, p: HeuristicParams): BidAction {
     v.auction.filter((e) => pred(e.seat) && e.bid?.kind === "suit").map((e) => (e.bid as { strain: Strain }).strain),
   );
   const partnerStrains = strainsBidBy((s) => s === partner);
+  const partnerTop = {} as Partial<Record<Strain, number>>;
+  for (const e of v.auction) if (e.seat === partner && e.bid?.kind === "suit") {
+    const b = e.bid as { strain: Strain; tricks: number };
+    partnerTop[b.strain] = Math.max(partnerTop[b.strain] ?? 0, b.tricks);
+  }
+  const supportFor = (s: Strain) => (p.partnerSupport6 >= 0 && partnerTop[s] === 6 ? p.partnerSupport6 : p.partnerSupport);
   const opponentStrains = strainsBidBy((s) => !sameTeam(s, v.seat));
   const partnerBid = v.auction.some((e) => e.seat === partner && e.bid !== null);
   const partnerPassed = v.auction.some((e) => e.seat === partner && e.bid === null);
@@ -448,7 +457,7 @@ function chooseBid(v: BidView, p: HeuristicParams): BidAction {
   const maxLevel = {} as Record<Strain, number>;
   const estimate = {} as Record<Strain, number>;
   for (const s of STRAINS) {
-    const signals = (partnerStrains.has(s) ? p.partnerSupport : 0)
+    const signals = (partnerStrains.has(s) ? supportFor(s) : 0)
       + (partnerBid ? p.partnerBidBoost : 0)
       - (partnerPassed ? p.partnerPassPenalty : 0)
       - (opponentStrains.has(s) ? p.opponentStrainPenalty : 0);

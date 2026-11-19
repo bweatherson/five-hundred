@@ -21,3 +21,16 @@ describe("jump bids", () => {
     expect(b).toEqual({ kind: "suit", tricks: 6, strain: "H" });
   });
 });
+
+describe("partner support by level (tuned20)", () => {
+  const h: Card[] = ["8S", "6S", "5S", "KH", "6H", "AC", "TC", "5C", "KD", "JK"];
+  const after = (tricks: number) => {
+    const auction = [{ seat: 3, bid: { kind: "suit" as const, tricks, strain: "S" as const } }, { seat: 0, bid: null }];
+    return { seat: 1, dealer: 2, rules: DEFAULT_RULES, scores: [0, 0] as [number, number], hand: h, auction, rng: makeRng(1), legal: legalBids(auction, DEFAULT_RULES) };
+  };
+  it("raises partner's 6♠ to 7♠, and partner's 7♠ to 8♠", () => {
+    expect(makeStrategy("tuned20").bid(after(6))).toEqual({ kind: "suit", tricks: 7, strain: "S" });
+    expect(makeStrategy("tuned20").bid(after(7))).toEqual({ kind: "suit", tricks: 8, strain: "S" });
+    expect(makeStrategy("tuned19").bid(after(7))).toBeNull();
+  });
+});

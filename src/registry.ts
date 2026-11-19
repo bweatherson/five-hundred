@@ -228,6 +228,19 @@ export const STRATEGIES: Record<string, { describe: string; make: Factory }> = {
       fewTrumpsLead: 3, drawStopVoid: true, drawInferOut: 1, ntMinAces: 1, jump: true, jumpToWin: true, drawPartnerHolds: 1, partnerRuff: 2, cashTop: true,
     }),
   },
+  tuned20: {
+    describe: "tuned19 + partner support split by level: 1.25 when partner's bid in the strain was at 6, 1.75 when higher",
+    make: heur({
+      aggression: -0.5, misereModel: "gap", misereDanger: 1, misereSlack: 1, opponentStrainPenalty: 1.5,
+      secondHandRuff: true, discardMode: "eval", signalBid: 4, signalStrains: "all", partnerSupport: 1.75,
+      stopAtWin: true, desperation: 1, behindScore: 300, behindAdjust: 1,
+      estimateModel: "fit", discardModel: "classic", bidderKeepTrumps: 1,
+      guardDiscards: 2, leadPartnerSuit: 1, aggression7: 0.25, aggression8: -0.25,
+      ruffLow: 2, overtakePartner: 2, secondHandDuck: 1, noBossTrumpLead: 1,
+      jokerDuck: 3, lateTrumpLead: 7, misereDef: 23, misereBid: 13, drawHigh: true,
+      fewTrumpsLead: 3, drawStopVoid: true, drawInferOut: 1, ntMinAces: 1, jump: true, jumpToWin: true, drawPartnerHolds: 1, partnerRuff: 2, cashTop: true, partnerSupport6: 1.25,
+    }),
+  },
   sim: {
     describe: "simulation card play (worlds=N, voids=bool, infer=bool, tries=N, tol=N, endgame=N, policy=name); bids, discards and rollouts use `policy` (default tuned)",
     make: (o) => {

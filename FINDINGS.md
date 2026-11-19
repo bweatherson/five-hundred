@@ -42,9 +42,10 @@ in [README.md](README.md).
 | `tuned17` | stop drawing trumps when one is out and partner bid the trump suit (it's probably partner's) | +0.1 ± 0.1, +0.1 ± 0.0 pts/deal (two seeds), +0.0 ± 0.0 win-prob vs `tuned16` |
 | `tuned18` | defenders win an opponent's top trump lead with the Joker (still keeping it under lower trumps) | +3.2 ± 0.2 pts/deal, +0.3 ± 0.0 win-prob vs `tuned17`; ±0.0 vs the field |
 | `tuned19` | ruff partner's winning side card only with the lowest trump that wins; cash side winners from the top (A before K) | +4.0 / +3.9 ± 0.2 pts/deal (two seeds), +0.4 ± 0.0 win-prob vs `tuned18`; +4.9 ± 0.5 vs the field |
+| `tuned20` | partner support by level: 1.25 when partner bid the strain at 6, 1.75 when higher (was 1.5) | +0.4 ± 0.2 pts/deal (three seeds), −0.1 ± 0.1 win-prob (two seeds) vs `tuned19`; +0.7 ± 0.9 vs the field. Adopted on the argument plus weak evidence |
 | `sim:policy=tuned2` | simulation card play on top of `tuned2` | +29.6 pts/deal vs `tuned2` |
 
-## What goes into each decision (current best: `tuned19`, and `sim` for card play)
+## What goes into each decision (current best: `tuned20`, and `sim` for card play)
 
 ### Bidding (`tuned4`–`tuned6`)
 
@@ -66,7 +67,7 @@ at the 7 level (but not 8+), because the estimate's spread is narrower for stron
      the A score 0.6 per card beyond 4; −0.7 for each suit with no stopper.
 2. **Add expected help:** partner 1.5 tricks, kitty 0.5, plus 0.75 tricks of general aggression.
 3. **Adjust for the auction:**
-   - +1.5 tricks in a strain partner has bid;
+   - in a strain partner has bid: +1.25 tricks if partner bid it at 6, +1.75 if higher;
    - −1.5 tricks in a strain an opponent has bid.
 4. **Adjust for the game score:**
    - If partner holds the bid and making it wins the game, pass.
@@ -719,7 +720,7 @@ plan to put the partner with the low card on lead; nothing does that yet. A sear
 solved exactly to the end) cut it to 80% against the heuristic's 90% on 60 hands (−10 ± 8), but took
 about 30 seconds of computing per hand: too slow for the web game as it stands.
 
-### Jump bids and not pushing the opponents up (`tuned16`)
+### Jump bids and not pushing the opponents up (`tuned16`; partner support by level, `tuned20`)
 
 Spotted in play: the computer never opened above 6. It found the highest level it would play in its
 best strain, then made the cheapest legal bid there, and only climbed if outbid. A player could
@@ -746,6 +747,33 @@ of overcalling an opponent when the estimate clears the bid by less than *m* tri
 | 1 | −37.6 ± 0.7 | −17.8 ± 0.5 |
 
 Competing is right. Against jump bidders the worry shrinks anyway: a 6-level opening shows no more.
+
+With jump bids, partner's 6-level bid means "and no higher", so it might deserve less support
+than a bid that could hide more. Re-testing `partnerSupport` against `tuned19` (200k deals, seed 15):
+
+| Variant | pts/deal |
+|---|---|
+| `partnerSupport` 1.25 for all bids | −1.1 ± 0.3 |
+| `partnerSupport6` 1.25 (6-level bids only; others 1.5) | −0.1 ± 0.3 |
+| `partnerSupport6` 1 | −2.0 ± 0.4 |
+| `partnerSupport6` 0.75 | −4.5 ± 0.4 |
+| `partnerSupport6` 1.25, `partnerSupport` 1.75 | +0.5 ± 0.4 |
+
+Follow-up on seeds 16 and 17 (400k deals each):
+
+| Variant (6-level / higher) | seed 16 | seed 17 |
+|---|---|---|
+| 1.25 / 1.75 | +0.3 ± 0.3 | +0.4 ± 0.3 |
+| 1.75 / 1.75 | −4.5 ± 0.3 | −4.4 ± 0.3 |
+| 1.5 / 1.75 | −0.3 ± 0.2 | −0.3 ± 0.2 |
+| 1.25 / 2 | −1.1 ± 0.3 | −1.1 ± 0.3 |
+| 1.5 / 2 | −3.2 ± 0.3 | −3.2 ± 0.3 |
+
+Only 1.25 / 1.75 is ahead: about +0.4 ± 0.2 pooled over three seeds. That is small but consistent.
+More support at either level loses. (Earlier, flat values: 0.5 −8.9, 1 −3.5, 2 −19.5.)
+But 1.25 / 1.75 doesn't help win games: −0.1 ± 0.1 win-prob pts/deal on both seeds (60k), −0.1 ± 0.1
+near 500 (30k), and +0.7 ± 0.9 against the field. Weak evidence, but nothing clearly against, and the
+argument for it is strong: adopted as `tuned20`.
 
 ### Partner's trumps (`tuned17`)
 
