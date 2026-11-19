@@ -41,9 +41,10 @@ in [README.md](README.md).
 | `tuned16` | jump bids: bid straight to the highest level we'd play, but no higher than the cheapest bid that wins the game | +5.0 ± 0.5 pts/deal, +0.6 / +0.5 ± 0.1 win-prob pts/deal (two seeds) vs `tuned15`; +4.4 ± 1.3 vs the field |
 | `tuned17` | stop drawing trumps when one is out and partner bid the trump suit (it's probably partner's) | +0.1 ± 0.1, +0.1 ± 0.0 pts/deal (two seeds), +0.0 ± 0.0 win-prob vs `tuned16` |
 | `tuned18` | defenders win an opponent's top trump lead with the Joker (still keeping it under lower trumps) | +3.2 ± 0.2 pts/deal, +0.3 ± 0.0 win-prob vs `tuned17`; ±0.0 vs the field |
+| `tuned19` | ruff partner's winning side card only with the lowest trump that wins; cash side winners from the top (A before K) | +4.0 / +3.9 ± 0.2 pts/deal (two seeds), +0.4 ± 0.0 win-prob vs `tuned18`; +4.9 ± 0.5 vs the field |
 | `sim:policy=tuned2` | simulation card play on top of `tuned2` | +29.6 pts/deal vs `tuned2` |
 
-## What goes into each decision (current best: `tuned18`, and `sim` for card play)
+## What goes into each decision (current best: `tuned19`, and `sim` for card play)
 
 ### Bidding (`tuned4`–`tuned6`)
 
@@ -775,6 +776,23 @@ vs `tuned17` (200k deals, seed 11):
   bidders never lead a top trump). Adopted.
 - Adding the trump-drawing lead to either Joker rule: +2.6, worse than the Joker rule alone. Once
   the Joker has won, leading boss trumps from the defence still does the bidder's drawing for it.
+
+### Ruffing partner's winner, and cashing from the top (`tuned19`)
+
+Spotted in play: at 7♥, after two rounds of trumps, partner led the K♦ from A-K; East followed. We
+were out of diamonds and the computer would have ruffed with the right bower. From our seat the K
+wasn't a sure winner (the A♦ was unseen), so the overtake rule (`overtakePartner`) took it with our
+cheapest *boss* winner, which here was the right bower. Two fixes, vs `tuned18` (200k deals, seed 13):
+
+| Variant | pts/deal |
+|---|---|
+| `partnerRuff=1`: never ruff partner's winning side card | −0.1 ± 0.2 |
+| `partnerRuff=2`: ruff it only with the lowest trump that wins | +1.7 ± 0.2 |
+| `cashTop`: when cashing side winners, lead the top one (A before K) | +1.6 ± 0.1 |
+| `cashTop` + `partnerRuff=2` | +4.0 ± 0.2 |
+
+Cashing from the top helps on its own: it gives partner (and the overtake rules) a card they can read.
+The combination: +3.9 ± 0.2 on seed 14, +0.4 ± 0.0 win-prob, +4.9 ± 0.5 against the field.
 
 ### Near 500
 

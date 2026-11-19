@@ -135,6 +135,10 @@ export interface HeuristicParams {
   /** Partner winning (not last, card not boss): 0 = overtake only a card below Q with a boss;
    *  1 = overtake any non-boss card with a boss; 2 = as 1, else with our highest card that beats it. */
   overtakePartner: number;
+  /** Partner is winning a side-suit trick that we're out of: 0 = may overtake with a boss trump, 1 = never ruff it, 2 = ruff only with our lowest winning trump. */
+  partnerRuff: number;
+  /** Cashing side winners: lead the highest boss of the suit (A before K), so partner can read it. */
+  cashTop: boolean;
   /** Defenders second to a bidder's side-suit lead, holding the boss: duck when 1 = holding boss + one other
    *  and the defence still needs 2+ tricks; 2 = also when the bidder's partner has shown out. */
   secondHandDuck: number;
@@ -250,6 +254,8 @@ export const DEFAULT_HEURISTIC: HeuristicParams = {
   avoidPartnerDiscards: 0,
   ruffLow: 0,
   overtakePartner: 0,
+  partnerRuff: 0,
+  cashTop: false,
   secondHandDuck: 0,
   noBossTrumpLead: 0,
   discardOppVoid: 0,
@@ -717,7 +723,11 @@ function playNormal(v: PlayView, p: HeuristicParams): Card {
     }
     if (p.fewTrumpsMode & 1) { const c = fewTrumps(); if (c) return c; }
     if (p.leadPartnerSuit === 2) { const c = partnerSuitLead(); if (c) return c; }
-    if (cashBoss && sideBoss.length > 0) return sideBoss[0];
+    if (cashBoss && sideBoss.length > 0) {
+      if (!p.cashTop || trump === null) return sideBoss[0];
+      const su = effectiveSuit(sideBoss[0], trump);
+      return dearest(sideBoss.filter((c) => effectiveSuit(c, trump) === su), trump);
+    }
     if (p.fewTrumpsMode & 2) { const c = fewTrumps(); if (c) return c; }
     if (p.leadPartnerSuit === 1) { const c = partnerSuitLead(); if (c) return c; }
     let side = nonJoker.filter((c) => !isTrump(c, trump));
@@ -814,6 +824,12 @@ function playNormal(v: PlayView, p: HeuristicParams): Card {
     if (p.partnerJoker && trump !== null && v.ledSuit === trump && !last && legal.includes("JK")
         && v.current[0].seat === v.contract.bidder && win.seat === v.contract.bidder && !isBoss(win.card, v, unseen)) return "JK";
     if (last || safeBoss(win.card, laterOpps) || beats.length === 0) return throwaway();
+    const ruffing = trump !== null && v.ledSuit !== trump && !legal.some((c) => effectiveSuit(c, trump) === v.ledSuit);
+    if (ruffing && p.partnerRuff === 1) return throwaway();
+    if (ruffing && p.partnerRuff === 2) {
+      const lowTrump = beats.filter((c) => !isJoker(c));
+      return lowTrump.length > 0 ? cheapest(lowTrump, trump) : throwaway();
+    }
     const bossBeats = beats.filter((c) => safeBoss(c, laterOpps) && !isJoker(c));
     if ((win.power < 12 || p.overtakePartner > 0) && bossBeats.length > 0) return cheapest(bossBeats, trump);
     if (p.overtakePartner === 2) {

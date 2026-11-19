@@ -82,6 +82,27 @@ describe("defender in control of trumps", () => {
   });
 });
 
+describe("partner's winning side card", () => {
+  it("doesn't ruff partner's K♦ with the right bower", () => {
+    // 7♥ by us. Two rounds of trumps; partner (seat 2) leads the K♦, East plays the 7♦, we're out of diamonds; West is last.
+    const hand: Card[] = ["JH", "6H", "5C", "8C", "AS", "KS", "QS", "9S"];
+    const h7 = { kind: "suit" as const, tricks: 7, strain: "H" as const };
+    const v: PlayView = {
+      seat: 0, dealer: 3, rules: DEFAULT_RULES, scores: [0, 0], hand, rng: makeRng(1),
+      auction: [{ seat: 0, bid: { kind: "suit", tricks: 6, strain: "H" } }, { seat: 1, bid: null }, { seat: 2, bid: h7 }, { seat: 3, bid: null }],
+      contract: makeContract(h7, 2), activeSeats: [0, 1, 2, 3], exposed: null, discarded: null,
+      tricks: [
+        { leader: 2, ledSuit: "H", winner: 2, plays: [{ seat: 2, card: "JK" }, { seat: 3, card: "QH" }, { seat: 0, card: "AH" }, { seat: 1, card: "9H" }] },
+        { leader: 2, ledSuit: "H", winner: 2, plays: [{ seat: 2, card: "JD" }, { seat: 3, card: "8H" }, { seat: 0, card: "KH" }, { seat: 1, card: "7H" }] },
+      ],
+      current: [{ seat: 2, card: "KD" }, { seat: 3, card: "7D" }], ledSuit: "D", legal: legalPlays(hand, "D", "H"),
+    };
+    expect(makeStrategy("tuned18").play(v)).toBe("JH");
+    expect(makeStrategy("tuned19").play(v)).toBe("6H");
+    expect(isTrump(makeStrategy("tuned18:partnerRuff=1").play(v), "H")).toBe(false);
+  });
+});
+
 describe("no-trump bids", () => {
   it("tuned14 won't bid no-trumps without an ace", () => {
     const hand: Card[] = ["JK", "KS", "QS", "9S", "KH", "QH", "8H", "KC", "QC", "KD"];

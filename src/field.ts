@@ -17,7 +17,7 @@ const opt = (name: string, dflt: string) => {
   argv.splice(i, 2);
   return v;
 };
-const baseSpec = opt("base", "tuned18");
+const baseSpec = opt("base", "tuned19");
 const field = opt("field", "heuristic,tuned,tuned2,tuned3,tuned4,tuned5,tuned6,tuned7,tuned8,tuned9,tuned10").split(",");
 const deals = Number(opt("deals", "10000"));
 const seed = Number(opt("seed", "1"));

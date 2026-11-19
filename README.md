@@ -181,7 +181,7 @@ Implement `Strategy` (`bid`, `discard`, `play`, and optionally `jokerSuit`), the
 
 ## Playing in the browser
 
-`web/` is a playable version. On your own, you sit South with the computer (`tuned18`) as your
+`web/` is a playable version. On your own, you sit South with the computer (`tuned19`) as your
 partner and both opponents. You can also play with friends. It uses the same rules engine and
 strategies as the test bench.
 
