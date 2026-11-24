@@ -84,7 +84,8 @@ export default function App({ session, onLeave, onNewGame }: { session: Session;
   const [showReview, setShowReview] = useState(false);
   const [selected, setSelected] = useState<Card[]>([]);
   const [jokerPending, setJokerPending] = useState(false);
-  const [showLast, setShowLast] = useState(false);
+  const [pop, setPop] = useState<"last" | "bids" | null>(null);
+  const toggle = (p: "last" | "bids") => setPop((cur) => (cur === p ? null : p));
   const { w, h } = useViewport();
   // A phone held upright gets its own layout; a tablet held upright keeps the
   // table layout, with cards sized from its width.
@@ -138,8 +139,11 @@ export default function App({ session, onLeave, onNewGame }: { session: Session;
         </div>
         <ContractChip t={t} tricks={tricks} />
         <div className="hud-actions">
+          {t.auction.length > 0 && (
+            <button className={`ghost ${pop === "bids" ? "on" : ""}`} onClick={() => toggle("bids")}>Bids</button>
+          )}
           {t.play && t.play.tricks.length > 0 && (
-            <button className="ghost" onClick={() => setShowLast((s) => !s)}>{showLast ? "Hide last trick" : "Last trick"}</button>
+            <button className={`ghost ${pop === "last" ? "on" : ""}`} onClick={() => toggle("last")}>Last trick</button>
           )}
           {onNewGame && <button className="ghost" onClick={onNewGame}>New game</button>}
           {onLeave && <button className="ghost" onClick={onLeave}>Leave</button>}
@@ -203,7 +207,8 @@ export default function App({ session, onLeave, onNewGame }: { session: Session;
           onClick={clickCard}
         />
 
-        {showLast && t.play && t.play.tricks.length > 0 && <LastTrick t={t} onClose={() => setShowLast(false)} />}
+        {pop === "last" && t.play && t.play.tricks.length > 0 && <LastTrick t={t} onClose={() => setPop(null)} />}
+        {pop === "bids" && t.auction.length > 0 && <BidHistory t={t} onClose={() => setPop(null)} />}
       </main>
 
       {jokerPending && (
@@ -389,6 +394,39 @@ function CenterPrompt({ t, actor, onBid }: { t: Table; actor: number | null; onB
         <button className="bid-cell wide pass-btn" onClick={() => onBid(null)}>Pass</button>
       </div>
       <p className="bid-foot">{misereNote(fromRulesConfig(t.rules))} Once you pass, you're out of the auction.</p>
+    </div>
+  );
+}
+
+function BidHistory({ t, onClose }: { t: Table; onClose: () => void }) {
+  const v = useViewer();
+  const order = [1, 2, 3, 4].map((i) => (t.dealer + i) % 4);
+  // One row per round of bidding; seats that have dropped out leave a gap.
+  const rows: (BidAction | undefined)[][] = [];
+  let lastCol = 4;
+  for (const e of t.auction) {
+    const col = order.indexOf(e.seat);
+    if (col <= lastCol) rows.push([undefined, undefined, undefined, undefined]);
+    rows[rows.length - 1][col] = e.bid;
+    lastCol = col;
+  }
+  return (
+    <div className="last-trick bid-history" onClick={onClose}>
+      <div className="last-title">Bidding</div>
+      <table>
+        <thead>
+          <tr>{order.map((s) => <th key={s} className={s === v.me ? "me" : ""}>{s === v.me ? "You" : v.name(s)}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              {r.map((b, j) => (
+                <td key={j} className={b === null ? "pass" : ""}>{b === undefined ? "" : <BidText bid={b} />}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

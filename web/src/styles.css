@@ -493,6 +493,13 @@ button.primary:disabled { opacity: 0.4; }
 .last-card { width: calc(var(--cw) * 0.6); display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
 .last-card .card-svg { aspect-ratio: 250 / 350; height: auto; }
 .last-card.won span { color: var(--gold); font-weight: 600; }
+.bid-history table { border-collapse: collapse; font-size: 13px; }
+.bid-history th { font-size: 11px; font-weight: 500; color: var(--muted); padding: 0 10px 4px; text-align: center; }
+.bid-history th.me { color: var(--gold); }
+.bid-history td { padding: 3px 10px; text-align: center; min-width: 44px; }
+.bid-history td .bid-text { font-family: var(--serif); font-weight: 600; font-size: 15px; }
+.bid-history td.pass { color: var(--muted); }
+.hud-actions button.ghost.on { color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
 
 .modal-back {
   position: fixed;
@@ -720,7 +727,7 @@ button.ghost.big { color: var(--text); }
 .rv-who { font-size: 11px; color: var(--muted); }
 .rv-foot { font-size: 12px !important; }
 /* Black suit symbols in bids shown on the dark table need a light ink. */
-:is(.contract-chip, .rv-line, .summary-line, .bid-high, .discard-bar) .bid-suit path[fill="var(--ink)"] { fill: #ece6d8; }
+:is(.contract-chip, .rv-line, .summary-line, .bid-high, .discard-bar, .bid-history) .bid-suit path[fill="var(--ink)"] { fill: #ece6d8; }
 
 /* ---------- Tablets ---------- */
 
