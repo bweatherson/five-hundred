@@ -143,7 +143,7 @@ export const CardSvg = memo(function CardSvg({ card, faceDown }: { card?: CardT;
           <g transform="translate(125 175)">
             <circle r="46" fill="var(--back)" stroke="var(--gold)" strokeWidth="2" />
             <circle r="39" fill="none" stroke="var(--gold)" strokeWidth="0.8" opacity="0.7" />
-            <text y="12" textAnchor="middle" className="card-back-mark">500</text>
+            <text y="10.6" textAnchor="middle" className="card-back-mark">500</text>
           </g>
         </g>
       ) : (

@@ -563,7 +563,16 @@ button.primary:disabled { opacity: 0.4; }
 .portrait .seat .bubble.pass::after { border-bottom-color: #d7d2c6; }
 .portrait .felt::before { width: 96vw; height: 58vh; top: 48%; }
 .portrait .trick, .portrait .center-note { top: 44%; }
-.portrait .bid-panel { top: 47%; }
+.portrait .bid-panel {
+  /* On phones, sit just above your hand, so the cards stay readable. */
+  top: auto;
+  bottom: calc(var(--hcw) * 1.95 + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-height: calc(100% - var(--hcw) * 1.95 - 8px);
+  overflow-y: auto;
+  animation-name: rise-up;
+}
+@keyframes rise-up { from { opacity: 0; transform: translate(-50%, 4%); } }
 .portrait .hud { flex-wrap: wrap; }
 .portrait .contract-chip { order: 3; width: 100%; justify-content: center; }
 @media (max-width: 560px) {
